@@ -1,3 +1,4 @@
+import re
 from collections import OrderedDict
 
 import yaml
@@ -58,5 +59,19 @@ class RichLoader(yaml.SafeLoader):
         return OrderedDict(loader.construct_pairs(node))
 
 
+class InlineTemplateLoader(RichLoader):
+    def construct_scalar(self, node):
+        if node.tag == 'tag:yaml.org,2002:str' and '$' in node.value:
+            new_value = re.sub('\$(.+?)\$', lambda m: '{' + m.group(1) + '}', node.value)
+            if new_value != node.value:
+                from emrichen.tags import Format
+                return Format(data=new_value)
+        return super().construct_scalar(node)
+
+
 def load_yaml(data):
     return list(yaml.load_all(data, Loader=RichLoader))
+
+
+def load_tyaml(data):
+    return list(yaml.load_all(data, Loader=InlineTemplateLoader))
